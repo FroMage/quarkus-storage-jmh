@@ -24,84 +24,84 @@ import io.vertx.core.Vertx;
 
 public class CPBenchmark {
 
-//    @Benchmark
-//    @Threads(20)
-//    public void testWorkerThreadSingleCallback(Blackhole blackhole,
-//                                               ThreadScope threadScope,
-//                                               BenchmarkScope benchmarkScope) throws InterruptedException, ExecutionException  {
-//        ManagedContext requestContext = Arc.container().requestContext();
-//        // one contextual checker
-//        Runnable checker = benchmarkScope.threadContext.contextualRunnable(() -> {
-//            if(Arc.container().requestContext() != requestContext)
-//                throw new IllegalStateException("Context not properly propagated");
-//        });
-//        // 5 contextual runners
-//        Runnable[] runners = new Runnable[5];
-//        for(int i=0;i<runners.length;i++) {
-//            runners[i] = benchmarkScope.threadContext.contextualRunnable(() -> {
-//                blackhole.consume(Arc.container().requestContext().isActive());
-//            });
-//        }
-//        
-//        CompletableFuture<Object> cf = new CompletableFuture<>();
-//        benchmarkScope.vertx.executeBlocking(prom -> {
-//            checker.run();
-//            for (Runnable runner : runners) {
-//                runner.run();
-//            }
-//            prom.complete();
-//        }, res -> {
-//            if(res.succeeded())
-//                cf.complete(res.result());
-//            else
-//                cf.completeExceptionally(res.cause());
-//        });
-//        cf.get();
-//    }
-//
-//    @Benchmark
-//    @Threads(20)
-//    public void testWorkerThreadMutiny(Blackhole blackhole,
-//                                               ThreadScope threadScope,
-//                                               BenchmarkScope benchmarkScope) throws InterruptedException, ExecutionException  {
-//        CompletableFuture<Object> emitter = new CompletableFuture<>();
-//        ManagedContext requestContext = Arc.container().requestContext();
-//        Uni<Boolean> uni = Uni.createFrom().completionStage(emitter)
-//                // one contextual checker
-//            .map(val -> { 
-//                if(Arc.container().requestContext() != requestContext)
-//                    throw new IllegalStateException("Context not properly propagated");
-//                return val;
-//            })
-//            // five contextual runners
-//            .map(val -> Arc.container().requestContext().isActive())
-//            .map(val -> Arc.container().requestContext().isActive())
-//            .map(val -> Arc.container().requestContext().isActive())
-//            .map(val -> Arc.container().requestContext().isActive())
-//            .map(val -> Arc.container().requestContext().isActive())
-//            ;
-//        
-//        CompletableFuture<Object> cf = new CompletableFuture<>();
-//        benchmarkScope.vertx.executeBlocking(prom -> {
-//            // complete from a quarkus thread
-//            emitter.complete("foo");
-//            // now subscribe
-//            uni.subscribe().with(val -> prom.complete(), x -> prom.fail(x));
-//        }, res -> {
-//            if(res.succeeded())
-//                cf.complete(res.result());
-//            else
-//                cf.completeExceptionally(res.cause());
-//        });
-//        cf.get();
-//    }
+    @Benchmark
+    @Threads(20)
+    public void testWorkerThreadSingleCallback(Blackhole blackhole,
+                                               ThreadScope threadScope,
+                                               BenchmarkScope benchmarkScope) throws InterruptedException, ExecutionException  {
+        ManagedContext requestContext = Arc.container().requestContext();
+        // one contextual checker
+        Runnable checker = benchmarkScope.threadContext.contextualRunnable(() -> {
+            if(Arc.container().requestContext() != requestContext)
+                throw new IllegalStateException("Context not properly propagated");
+        });
+        // 5 contextual runners
+        Runnable[] runners = new Runnable[5];
+        for(int i=0;i<runners.length;i++) {
+            runners[i] = benchmarkScope.threadContext.contextualRunnable(() -> {
+                blackhole.consume(Arc.container().requestContext().isActive());
+            });
+        }
+        
+        CompletableFuture<Object> cf = new CompletableFuture<>();
+        benchmarkScope.vertx.executeBlocking(prom -> {
+            checker.run();
+            for (Runnable runner : runners) {
+                runner.run();
+            }
+            prom.complete();
+        }, res -> {
+            if(res.succeeded())
+                cf.complete(res.result());
+            else
+                cf.completeExceptionally(res.cause());
+        });
+        cf.get();
+    }
+
+    @Benchmark
+    @Threads(20)
+    public void testWorkerThreadMutiny(Blackhole blackhole,
+                                               ThreadScope threadScope,
+                                               BenchmarkScope benchmarkScope) throws InterruptedException, ExecutionException  {
+        CompletableFuture<Object> emitter = new CompletableFuture<>();
+        ManagedContext requestContext = Arc.container().requestContext();
+        Uni<Boolean> uni = Uni.createFrom().completionStage(emitter)
+                // one contextual checker
+            .map(val -> { 
+                if(Arc.container().requestContext() != requestContext)
+                    throw new IllegalStateException("Context not properly propagated");
+                return val;
+            })
+            // five contextual runners
+            .map(val -> Arc.container().requestContext().isActive())
+            .map(val -> Arc.container().requestContext().isActive())
+            .map(val -> Arc.container().requestContext().isActive())
+            .map(val -> Arc.container().requestContext().isActive())
+            .map(val -> Arc.container().requestContext().isActive())
+            ;
+        
+        CompletableFuture<Object> cf = new CompletableFuture<>();
+        benchmarkScope.vertx.executeBlocking(prom -> {
+            // complete from a quarkus thread
+            emitter.complete("foo");
+            // now subscribe
+            uni.subscribe().with(val -> prom.complete(), x -> prom.fail(x));
+        }, res -> {
+            if(res.succeeded())
+                cf.complete(res.result());
+            else
+                cf.completeExceptionally(res.cause());
+        });
+        cf.get();
+    }
 
     @Benchmark
     @Threads(20)
     public void testWorkerThreadCompletionStage(Blackhole blackhole,
                                                ThreadScope threadScope,
                                                BenchmarkScope benchmarkScope) throws InterruptedException, ExecutionException  {
-        CompletableFuture<Object> emitter = new CompletableFuture<>();
+        CompletableFuture<Object> emitter = benchmarkScope.threadContext.newIncompleteFuture();
         ManagedContext requestContext = Arc.container().requestContext();
         CompletableFuture<Object> cs = emitter
                 // one contextual checker
